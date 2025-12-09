@@ -20,7 +20,7 @@ class Submission extends Model
 
     public function dinas()
     {
-        return $this->belongsTo(Dinas::class);
+        return $this->belongsTo(Dinas::class, 'id_dinas');
     }
     public function ringkasanEksekutif()
 {

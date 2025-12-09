@@ -60,7 +60,28 @@ class ValidasiService
             $data['id_dinas']=$row->id_dinas;
             $data['nama_dinas']=$row->nama_dinas ??'tidak diketahui';
             $data['Nilai_Penghargaan']=$row->Total_Skor;
-            $data['Nilai_IKLH']=$iklh ? collect([$iklh->indeks_kualitas_air??0,$iklh->indeks_kualitas_udara??0,$iklh->indeks_kualitas_lahan??0,$iklh->indeks_kualitas_kehati??0,$iklh->indeks_kualitas_pesisir_laut])->filter(fn($value) => $value !==null)->avg(): null; // nanti diisi dari proses lain
+            
+            // Hitung nilai IKLH dengan mempertimbangkan has_pesisir
+            if ($iklh) {
+                $iklhValues = [
+                    $iklh->indeks_kualitas_air ?? 0,
+                    $iklh->indeks_kualitas_udara ?? 0,
+                    $iklh->indeks_kualitas_lahan ?? 0,
+                    $iklh->indeks_kualitas_kehati ?? 0,
+                ];
+                
+                // Hanya tambahkan pesisir jika ada nilainya (berarti region punya pesisir)
+                if ($iklh->indeks_kualitas_pesisir_laut !== null) {
+                    $iklhValues[] = $iklh->indeks_kualitas_pesisir_laut;
+                }
+                
+                $data['Nilai_IKLH'] = collect($iklhValues)
+                    ->filter(fn($value) => $value !== null && $value !== 0)
+                    ->avg();
+            } else {
+                $data['Nilai_IKLH'] = null;
+            }
+            
             $data['Total_Skor']= ($data['Nilai_Penghargaan'] ?? 0) + ($data['Nilai_IKLH'] ?? 0)/2;
             $data['status']='parsed_ok';
             $data['status_result']= ($data['Total_Skor'] >= 60) ? 'lulus' : 'tidak_lulus';
@@ -88,6 +109,12 @@ class ValidasiService
             $data['validasi_2_id']=$validasi2->id;
             $data['id_dinas']=$row->id_dinas;
             $data['nama_dinas']=$row->nama_dinas ??'tidak diketahui';
+            
+            // Copy nilai dari Validasi1
+            $data['Nilai_Penghargaan'] = $row->Nilai_Penghargaan;
+            $data['Nilai_IKLH'] = $row->Nilai_IKLH;
+            $data['Total_Skor'] = $row->Total_Skor;
+            
             // Checklist kriteria
             $data['Kriteria_WTP']=false; // nanti diisi dari proses lain
             $data['Kriteria_Kasus_Hukum']=false; // nanti diisi dari proses lain
@@ -114,6 +141,82 @@ class ValidasiService
         ->update(['status_validasi' => 'tidak_lolos']);
     
         return $validasi2;
+    }
+
+    /**
+     * Create Wawancara records untuk top N dinas per kategori
+     * @param Validasi2 $validasi2
+     * @param int $topN Jumlah dinas per kategori (default 5)
+     * @return int Total records created
+     */
+    public function createWawancara(Validasi2 $validasi2, int $topN = 5)
+    {
+        // Ambil semua dinas yang lolos validasi 2
+        $dinasLolos = $validasi2->Validasi2Parsed()
+            ->where('status_validasi', 'lolos')
+            ->with('dinas.region')
+            ->get();
+        
+        // Group by kategori
+        $kategorized = [
+            'provinsi' => [],
+            'kabupaten_besar' => [],
+            'kabupaten_sedang' => [],
+            'kabupaten_kecil' => [],
+            'kota_besar' => [],
+            'kota_sedang' => [],
+            'kota_kecil' => []
+        ];
+        
+        foreach ($dinasLolos as $item) {
+            $dinas = $item->dinas;
+            if (!$dinas || !$dinas->region) continue;
+            
+            $region = $dinas->region;
+            
+            // Tentukan kategori
+            if ($region->type === 'provinsi') {
+                $kategori = 'provinsi';
+            } else {
+                $kategori = $region->kategori ?? 'kabupaten_sedang';
+            }
+            
+            $kategorized[$kategori][] = [
+                'id_dinas' => $item->id_dinas,
+                'Total_Skor' => $item->Total_Skor,
+            ];
+        }
+        
+        // Ambil top N dari masing-masing kategori
+        $wawancaraToInsert = [];
+        foreach ($kategorized as $kategori => $dinas_list) {
+            $topDinas = collect($dinas_list)
+                ->sortByDesc('Total_Skor')
+                ->take($topN)
+                ->values();
+            
+            foreach ($topDinas as $dinas) {
+                $wawancaraToInsert[] = [
+                    'year' => $validasi2->year,
+                    'id_dinas' => $dinas['id_dinas'],
+                    'nilai_wawancara' => null,
+                    'catatan' => null,
+                    'status' => 'draft',
+                    'is_finalized' => false,
+                    'finalized_at' => null,
+                    'finalized_by' => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+        }
+        
+        // Bulk insert
+        if (!empty($wawancaraToInsert)) {
+            \App\Models\Pusdatin\Wawancara::insert($wawancaraToInsert);
+        }
+        
+        return count($wawancaraToInsert);
     }
 
 }

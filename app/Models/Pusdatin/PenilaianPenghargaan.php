@@ -20,7 +20,7 @@ class PenilaianPenghargaan extends Model
     ];
     public function penilaianSLHD()
     {
-        return $this->belongsTo(PenilaianSLHD::class, 'penilaian_slhd_ref_id');
+        return $this->bpelongsTo(PenilaianSLHD::class, 'penilaian_slhd_ref_id');
     }
     public function PenilaianPenghargaanParsed()
     {

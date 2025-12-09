@@ -18,10 +18,11 @@ class ParsePenilaianSLHDJob implements ShouldQueue
 {
     use Dispatchable, Queueable, SerializesModels;
     protected $batch;
-
+    
     /**
      * Create a new job instance.
      */
+
     public function __construct($batch)
     {
         $this->batch = $batch;
@@ -37,7 +38,7 @@ class ParsePenilaianSLHDJob implements ShouldQueue
         $this->batch->update(['status' => 'parsing']);
         $map=[
         'id_dinas' => 'int',
-    'nama_dinas' => 'string',
+    
 
         'Bab_1' => 'int',
         'Jumlah_Pemanfaatan_Pelayanan_Laboratorium' => 'int',
@@ -65,6 +66,10 @@ class ParsePenilaianSLHDJob implements ShouldQueue
             $excel=new ExcelService;
             $slhdService=new SLHDService;
             $rows=$excel->import($filepath);
+            
+            // Eager load semua dinas sekali untuk performance (1 query saja)
+            $allDinas = \App\Models\Dinas::all()->keyBy('id');
+            
         foreach($rows as $row){
             $errors=[];
             $data=[
@@ -72,8 +77,20 @@ class ParsePenilaianSLHDJob implements ShouldQueue
             ];
                 foreach($map as $field => $type){
                     $data[$field]= safe($field, fn() => validateValue($row[$field] ?? null, $type), $errors);
+                }   
+                
+                // Validasi dan ambil nama dinas dari database (lebih konsisten)
+                if (isset($data['id_dinas']) && $data['id_dinas'] !== null) {
+                    $dinas = $allDinas->get($data['id_dinas']);
+                    if ($dinas) {
+                        $data['nama_dinas'] = $dinas->nama_dinas;
+                    } else {
+                        $errors['id_dinas'] = "Dinas dengan ID {$data['id_dinas']} belum terdaftar di sistem.";
+                        $data['nama_dinas'] = $row['nama_dinas'] ?? null; // Fallback ke Excel
+                    }
+                } else {
+                    $data['nama_dinas'] = $row['nama_dinas'] ?? null; // Fallback jika id_dinas null
                 }
-
                 
                 $data['status']= empty($errors) ? 'parsed_ok' : 'parsed_error';
                 $data['error_messages']= empty($errors) ? null : json_encode($errors);

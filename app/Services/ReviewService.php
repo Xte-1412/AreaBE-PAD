@@ -15,18 +15,28 @@ class ReviewService
      * Create a new class instance.
      */
     protected $logService;
+    protected $map = [
+        'ringkasanEksekutif' => 'ringkasan_eksekutif',
+        'laporanUtama' => 'laporan_utama',
+        'iklh' => 'iklh',
+    ];
     public function __construct(LogService $logService)
     {
         $this->logService = $logService;    
     }
-    public function evaluateDocument(Submission $submission, $documentType, $data){
-        return DB::transaction(function () use ($submission, $documentType, $data) {
+    public function evaluateDocument(Submission $submission, $documentType, $data,$user){
+        return DB::transaction(function () use ($submission, $documentType, $data,$user) {
             $document = $submission->{$documentType};
             if (!$document) {
                 throw new \Exception("Dokumen $documentType tidak ditemukan untuk direview.");
             }
-            if ($document->status === 'finalized' || $document->status === 'approved') {
-                throw new \Exception("Dokumen $documentType sudah difinalisasi atau disetujui, tidak dapat direview ulang.");
+            // Validasi: dokumen harus sudah finalized untuk bisa direview
+            if ($document->status == 'draft') {
+                throw new \Exception("Dokumen $documentType harus difinalisasi terlebih dahulu sebelum dapat direview. Status saat ini: {$document->status}");
+            }
+            // Validasi: dokumen yang sudah approved tidak bisa direview ulang
+            if ($document->status === 'approved') {
+                throw new \Exception("Dokumen $documentType sudah direview, tidak dapat direview ulang.");
             }   
             // Update status dan catatan admin pada dokumen
             $document->update([
@@ -38,11 +48,11 @@ class ReviewService
 
             $this->logService->log([
                 'submission_id' => $submission->id,
-                'actor_id' => Auth::id(),
-                'year' => now()->year(),
+                'actor_id' => $user,
+                'year' => (int) now()->year,           // <-- pastikan inte,
                 'stage' => 'review',
                 'activity_type' => $data['status'] === 'approved' ? 'approve' : 'reject',
-                'document_type' => $documentType,
+                'document_type' => $this->map[$documentType],
                 'status' => $data['status'],
                 'catatan' => $data['catatan_admin'] ?? null,
             ]);

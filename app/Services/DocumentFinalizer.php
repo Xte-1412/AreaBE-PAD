@@ -78,5 +78,41 @@ class DocumentFinalizer
 
     }
 
+    /**
+     * Force finalize document by deadline - set to specified status (default: approved)
+     * Digunakan untuk auto-finalize saat deadline terlewati
+     */
+    public function forceFinalize($document, $status = 'approved')
+    {
+        if (!$document) {
+            return false;
+        }
+
+        // Force finalize dengan status yang ditentukan (default: approved)
+        if (!in_array($document->status, ['approved'])) {
+            $document->update([
+                'status' => $status,
+            ]);
+        }
+
+        return true;
+    }
+
+    /**
+     * Force finalize collection by deadline - set to specified status (default: approved)
+     */
+    public function forceFinalizeCollection($documents, $status = 'approved')
+    {
+        if (!$documents || $documents->isEmpty()) {
+            return false;
+        }
+
+        foreach ($documents as $document) {
+            $this->forceFinalize($document, $status);
+        }
+
+        return true;
+    }
+
 
 }

@@ -13,6 +13,9 @@ class Validasi2Parsed extends Model
         'validasi_2_id',
         'id_dinas',
         'nama_dinas',
+        'Nilai_Penghargaan',
+        'Nilai_IKLH',
+        'Total_Skor',
         'Kriteria_WTP',
         'Kriteria_Kasus_Hukum',
         'status_validasi',
@@ -22,7 +25,9 @@ class Validasi2Parsed extends Model
     protected $casts = [
         'Kriteria_WTP' => 'boolean',
         'Kriteria_Kasus_Hukum' => 'boolean',
-      
+        'Nilai_Penghargaan' => 'decimal:3',
+        'Nilai_IKLH' => 'decimal:3',
+        'Total_Skor' => 'decimal:3',
     ];
 
     public function validasi2()

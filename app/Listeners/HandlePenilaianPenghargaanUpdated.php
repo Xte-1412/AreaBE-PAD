@@ -23,8 +23,13 @@ class HandlePenilaianPenghargaanUpdated
     public function handle(PenilaianPenghargaanUpdated $event): void
     {
         $penillaianPenghargaan = $event->penilaianPenghargaan;
-                 if ($penillaianPenghargaan->getOriginal('status') === 'finalized' && $penillaianPenghargaan->status !== 'finalized'){
-                Validasi1::where('penilaian_penghargaan_id', $penillaianPenghargaan->id)->delete();
+        
+        if ($penillaianPenghargaan->getOriginal('status') === 'finalized' && $penillaianPenghargaan->status !== 'finalized') {
+            // Hapus Validasi1 (akan cascade delete Validasi2 via DB)
+            Validasi1::where('penilaian_penghargaan_ref_id', $penillaianPenghargaan->id)->delete();
+            
+            // Hapus Wawancara untuk year terkait (tidak ada FK cascade)
+            \App\Models\Pusdatin\Wawancara::where('year', $penillaianPenghargaan->year)->delete();
         }
     }  
 }

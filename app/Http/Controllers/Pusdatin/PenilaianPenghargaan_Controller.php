@@ -19,10 +19,13 @@ class PenilaianPenghargaan_Controller extends Controller
     private const STORAGE_DISK = 'pusdatin';
 
 
-    public function __construct(LogService $logService,ValidasiService $validasiService)
+    protected $tahapanService;
+
+    public function __construct(LogService $logService, ValidasiService $validasiService, \App\Services\TahapanPenilaianService $tahapanService)
     {
         $this->logService = $logService;        
         $this->validasiService = $validasiService;
+        $this->tahapanService = $tahapanService;
 }
     public function downloadTemplate(Request $request, $year){
         $penilaianSLHD= PenilaianSLHD::where(['year'=>$year,'status'=>'finalized'])->first();
@@ -77,6 +80,12 @@ class PenilaianPenghargaan_Controller extends Controller
         $path = 'penilaian/penghargaan/'.$year;
         $batch=PenilaianSLHD::where(['status'=>'finalized','year'=>$year])->first();
 
+        // Safety check: SLHD harus sudah finalized
+        if (!$batch) {
+            return response()->json([
+                'message' => 'Penilaian SLHD untuk tahun '.$year.' belum difinalisasi.'
+            ], 400);
+        }
 
         $fileName = 'penilaian_penghargaan_'.$year.'_'.now()->format('YmdHis').'.'.$file->getClientOriginalExtension();
         
@@ -134,14 +143,30 @@ class PenilaianPenghargaan_Controller extends Controller
         ],200);
     }
     public function getAllPenilaianPenghargaanParsed(Request $request,PenilaianPenghargaan $penilaianPenghargaan){
-        $penilaian = PenilaianPenghargaan::with('penilaianPenghargaanParsed')->orderByDesc('year')->get();
+        $parsedData = $penilaianPenghargaan->PenilaianPenghargaanParsed;
+        
+        // Hitung statistik error
+        $totalParsed = $parsedData->count();
+        $totalError = $parsedData->where('status', 'error')->count();
+        $totalSuccess = $parsedData->where('status', 'success')->count();
+        
         return response()->json([
-            'message' => 'Semua data Penilaian Penghargaan beserta hasil parsing berhasil ditemukan.',
-            'data' => $penilaian
+            'message' => 'Data Penilaian Penghargaan beserta hasil parsing berhasil ditemukan.',
+            'total_parsed' => $totalParsed,
+            'total_success' => $totalSuccess,
+            'total_error' => $totalError,
+            'data' => $parsedData
         ],200);
     }
     
     public function finalizePenilaianPenghargaan(Request $request,PenilaianPenghargaan $penilaianPenghargaan){
+        // Safety check: Penilaian sudah parsed
+        if ($penilaianPenghargaan->status !== 'parsed_ok') {
+            return response()->json([
+                'message' => 'Penilaian Penghargaan belum selesai di-parsing atau terjadi error saat parsing.'
+            ], 400);
+        }
+
         $penilaianPenghargaan->update([
             'is_finalized' => true,
             'finalized_at' => now(),
@@ -158,6 +183,12 @@ class PenilaianPenghargaan_Controller extends Controller
             'catatan' => $request->catatan ?? null,
             'status' =>'success'
         ]);
+
+        // Update rekap penilaian
+        app(\App\Services\RekapPenilaianService::class)->updateFromPenghargaan($penilaianPenghargaan);
+
+        // Update tahapan penilaian status
+        $this->tahapanService->updateSetelahFinalize('penilaian_penghargaan', $penilaianPenghargaan->year);
 
         $this->validasiService->CreateValidasi1($penilaianPenghargaan);
 
@@ -190,6 +221,9 @@ class PenilaianPenghargaan_Controller extends Controller
             'catatan' => null,
             'status' =>'success'
         ]);
+
+        // Update tahapan penilaian status (kembali ke tahap sebelumnya)
+        $this->tahapanService->updateSetelahUnfinalize('penilaian_penghargaan', $penilaianPenghargaan->year);
 
         return response()->json([
             'message' => 'Penilaian Penghargaan untuk tahun '.$year.' berhasil dibuka finalisasinya.',

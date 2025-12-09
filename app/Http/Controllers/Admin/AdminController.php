@@ -102,4 +102,60 @@ class AdminController extends Controller
             return response()->json(['message' => 'Gagal membuat akun Pusdatin', 'error' => $e->getMessage()], 400);
         }
     }
+    public function showUser(Request $request, $role, $status){
+        $perPage = $request->input('per_page', 15);
+        
+        if($role !='pusdatin'){
+
+            $data = User::with('dinas.region')
+            ->whereNotIn('role', ['admin', 'pusdatin'])
+            ->where('role', $role == "kabupaten" ? "kabupaten/kota" : $role)  
+            ->where('is_active', $status)
+            ->when($request->search, function($query, $search) {
+                return $query->where(function($q) use ($search) {
+                    $q->where('email', 'like', "%{$search}%")
+                      ->orWhereHas('dinas', function($dq) use ($search) {
+                          $dq->where('nama_dinas', 'like', "%{$search}%")
+                             ->orWhere('kode_dinas', 'like', "%{$search}%");
+                      });
+                });
+            })
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage);
+            
+            return response()->json($data);
+        }elseif($role=='pusdatin'){
+
+            $data = User::where('role', 'pusdatin')
+            ->where('is_active', $status)
+            ->when($request->search, function($query, $search) {
+                return $query->where('email', 'like', "%{$search}%");
+            })
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage);
+            
+            return response()->json($data);
+        }
+
+
+    }
+ public function trackingHistoryPusdatin($year = null, $pusdatin_id = null)
+{
+    $query = DB::table('pusdatin_logs')
+        ->orderByDesc('created_at');
+
+    // Filter tahun kalau ada
+    $query->when($year, function ($q) use ($year) {
+        $q->where('year', $year);
+    });
+
+    // Filter pusdatin_id kalau ada
+    $query->when($pusdatin_id, function ($q) use ($pusdatin_id) {
+        $q->where('actor_id', $pusdatin_id);
+    });
+
+    $data = $query->get();
+
+    return response()->json($data);
+}
 }

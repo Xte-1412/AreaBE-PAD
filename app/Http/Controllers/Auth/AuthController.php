@@ -86,6 +86,7 @@ class AuthController extends Controller
             'email' => 'required|string',
             'password' => 'required|string',
         ]);
+        // return response()->json(['test' => 'clean response']);
         $user=User::where('email', $request->email)->first();
          if (!$user ){
             return response()->json(['message' => 'email tidak ditemukan'], 404);
@@ -104,7 +105,9 @@ class AuthController extends Controller
             'user' => [
             'id' => $user->id,
             'email' => $user->email,
-            'role' => $user->role,
+            'role' => [
+                'name' => $user->role, // Wrap dalam object agar match dengan FE
+            ],
             'dinas_id' => $user->dinas_id,
             'token' => $token,
     ],

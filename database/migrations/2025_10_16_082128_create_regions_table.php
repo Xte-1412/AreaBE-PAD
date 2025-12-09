@@ -17,6 +17,7 @@ return new class extends Migration
             $table->enum('type', ['provinsi','kabupaten/kota']);
             $table->foreignId('parent_id')->nullable()->constrained('regions')->nullOnDelete();
             $table->enum('kategori',['kota_kecil','kota_sedang','kota_besar','kabupaten_kecil','kabupaten_sedang','kabupaten_besar'])->nullable();
+            $table->boolean('has_pesisir')->default(false);
             $table->timestamps();
         });
     }

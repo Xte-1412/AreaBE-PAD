@@ -19,9 +19,6 @@ return new class extends Migration
             $table->string('kode_tabel');
             $table->string('path');
             $table->enum('matra', [
-                'Jumlah Pemanfaatan Pelayanan Laboratorium',
-                'Daya Dukung dan Daya Tampung Lingkungan Hidup',
-                'Kajian Lingkungan Hidup Strategis',
                 'Keanekaragaman Hayati',
                 'Kualitas Air',
                 'Laut, Pesisir, dan Pantai',
@@ -30,7 +27,7 @@ return new class extends Migration
                 'Pengelolaan Sampah dan Limbah',
                 'Perubahan Iklim',
                 'Risiko Bencana',
-                'Penetapan Isu Prioritas'
+                'Lainnya'
             ]);
             $table->enum('status', ['draft', 'finalized'])->default('draft');
             $table->text('catatan_admin')->nullable();

@@ -39,4 +39,11 @@ class Validasi1 extends Model
     {
         return $this->belongsTo(\App\Models\User::class, 'finalized_by');
     }
+    
+    protected static function booted()
+    {
+        static::updated(function ($validasi1) {
+            event(new \App\Events\Validasi1Updated($validasi1));
+        });
+    }
 }

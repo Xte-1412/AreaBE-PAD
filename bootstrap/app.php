@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'ensuresubmissions'=> \App\Http\Middleware\EnsureSubmissions::class,
             'ensuredocument'=> \App\Http\Middleware\EnsureDocument::class,
             'ensureevaluation'=> \App\Http\Middleware\EnsureEvaluation::class,
+            'checkdeadline'=> \App\Http\Middleware\CheckDeadline::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -25,6 +25,7 @@ class PenilaianSLHD_Controller extends Controller
     protected $logService;
     protected $excelService;
     protected $slhdService;
+    protected $tahapanService;
 
     public function deleteExistingPath($filePath){
         $disk = Storage::disk(self::STORAGE_DISK);
@@ -34,11 +35,12 @@ class PenilaianSLHD_Controller extends Controller
         }
     }
      
-    public function __construct(LogService $logService, ExcelService $excelService,SLHDService $slhdService)
+    public function __construct(LogService $logService, ExcelService $excelService, SLHDService $slhdService, \App\Services\TahapanPenilaianService $tahapanService)
     {
         $this->logService = $logService;
         $this->excelService = $excelService;
         $this->slhdService = $slhdService;
+        $this->tahapanService = $tahapanService;
 
         
     }
@@ -98,8 +100,7 @@ class PenilaianSLHD_Controller extends Controller
                 'is_finalized' => false,
                 'catatan' => $request->catatan??null,
             ]
-        );
-        
+            );
         $this->logService->log([
             'year' => $year,
             'actor_id' => $request->user()->id,
@@ -108,15 +109,15 @@ class PenilaianSLHD_Controller extends Controller
             'document_type' => null,
             'catatan' => $request->catatan ?? null,
             'status' =>'success'
-
         ]);
+
         dispatch(new ParsePenilaianSLHDJob($penilaian))->onQueue('penilaian_slhd_parsing');
         return response()->json([
             'message' =>  'Penilaian SLHD berhasil diunggah.',
             'data' => $penilaian
         ], 200);
 }
-    public function getPenilaianSLHD(Request $request,$year){
+    public function getPenilaianSLHD($year){
         $penilaian = PenilaianSLHD::where('year',$year)->orderByDesc('created_at')->get();
         if(!$penilaian){
             return response()->json([
@@ -129,21 +130,26 @@ class PenilaianSLHD_Controller extends Controller
     }
 
     public function getAllParsedPenilaianSLHD(Request $request,PenilaianSLHD $penilaianSLHD){
-
-        return response()->json(
-            [
-               "data" => $penilaianSLHD->penilaianSLHDParsed
-            ]
-            );
+        $parsedData = $penilaianSLHD->penilaianSLHDParsed;
         
-       
+        // Hitung statistik error
+        $totalParsed = $parsedData->count();
+        $totalError = $parsedData->where('status', 'error')->count();
+        $totalSuccess = $parsedData->where('status', 'success')->count();
+
+        return response()->json([
+            "total_parsed" => $totalParsed,
+            "total_success" => $totalSuccess,
+            "total_error" => $totalError,
+            "data" => $parsedData
+        ]);
     }
     public function status(PenilaianSLHD $penilaianSLHD){
         return response()->json(["status"=>$penilaianSLHD->status],200);
 
     }
 
-    public function finalizePenilaianSLHD(Request $request,$year,PenilaianSLHD $penilaianSLHD){
+    public function finalizePenilaianSLHD(Request $request,PenilaianSLHD $penilaianSLHD){
         $penilaianSLHD->update(
             [
                 'is_finalized' => true,
@@ -161,6 +167,13 @@ class PenilaianSLHD_Controller extends Controller
             'catatan' => $request->catatan ?? null,
             'status' =>'success'
         ]);
+        
+        // Update rekap penilaian
+        app(\App\Services\RekapPenilaianService::class)->updateFromSLHD($penilaianSLHD);
+        
+        // Update tahapan penilaian status
+        $this->tahapanService->updateSetelahFinalize('penilaian_slhd', $penilaianSLHD->year);
+        
         dispatch(new GenerateTemplatePenilaianPenghargaan($penilaianSLHD))->onQueue('generate_templates_penghargaan');
         return response()->json([
             'message' => 'Penilaian SLHD untuk tahun '.$penilaianSLHD->year.' berhasil difinalisasi.',
@@ -195,6 +208,10 @@ class PenilaianSLHD_Controller extends Controller
             'catatan' => $request->catatan ?? null,
             'status' =>'success'
         ]);
+        
+        // Update tahapan penilaian status (kembali ke tahap sebelumnya)
+        $this->tahapanService->updateSetelahUnfinalize('penilaian_slhd', $penilaianSLHD->year);
+        
         return response()->json([
             'message' => 'Penilaian SLHD untuk tahun '.$penilaianSLHD->year.' berhasil dibuka kembali.',
             'data' => $penilaianSLHD

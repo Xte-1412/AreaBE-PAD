@@ -62,11 +62,14 @@ class ParsePenilaianPenghargaanJob implements ShouldQueue
             $filepath= Storage::disk('pusdatin')->path($this->batch->file_path);
              Log::info("Parsing penilaian penghargaan file: " . $filepath);
 
+            // Eager load semua dinas sekali untuk performance (1 query saja)
+            $allDinas = \App\Models\Dinas::all()->keyBy('id');
+
             SimpleExcelReader::create($filepath)
                 ->noHeaderRow()
                 ->skip(2)
                 ->getRows()
-                ->each(function(array $rowValues) use ($map, &$rowToInsert, $bobot) {
+                ->each(function(array $rowValues) use ($map, &$rowToInsert, $bobot, $allDinas) {
                     $errors = [];
                     
                     $data = [
@@ -74,6 +77,11 @@ class ParsePenilaianPenghargaanJob implements ShouldQueue
                     ];
                     $index=0;
                     foreach ($map as $field => $type) {
+                        // Skip nama_dinas dari Excel, akan diambil dari database
+                        if ($field === 'nama_dinas') {
+                            $index++; // Skip index untuk nama_dinas di Excel
+                            continue;
+                        }
 
                         $data[$field] = safe(
                             $field, 
@@ -112,6 +120,19 @@ class ParsePenilaianPenghargaanJob implements ShouldQueue
                         fn() => ($data['Adipura_Skor']*$bobot['Adipura']) + ($data['Adiwiyata_Skor']*$bobot['Adiwiyata']) + ($data['Proklim_Skor']*$bobot['Proklim']) + ($data['Proper_Skor']*$bobot['Proper']) + ($data['Kalpataru_Skor']*$bobot['Kalpataru']), 
                         $errors
                     );
+
+                    // Validasi dan ambil nama dinas dari database (lebih konsisten)
+                    if (isset($data['id_dinas']) && $data['id_dinas'] !== null) {
+                        $dinas = $allDinas->get($data['id_dinas']);
+                        if ($dinas) {
+                            $data['nama_dinas'] = $dinas->nama_dinas;
+                        } else {
+                            $errors['id_dinas'] = "Dinas dengan ID {$data['id_dinas']} belum terdaftar di sistem.";
+                            $data['nama_dinas'] = $rowValues[1] ?? null; // Fallback ke Excel (index 1 untuk nama_dinas)
+                        }
+                    } else {
+                        $data['nama_dinas'] = $rowValues[1] ?? null; // Fallback jika id_dinas null
+                    }
 
                     $data['status'] = empty($errors) ? 'parsed_ok' : 'parsed_error';
                     $data['error_messages'] = empty($errors) ? null : json_encode($errors);
