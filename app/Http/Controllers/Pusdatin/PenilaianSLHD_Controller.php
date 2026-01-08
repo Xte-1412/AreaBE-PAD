@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Models\Pusdatin\Parsed\PenilaianSLHD_Parsed;
 use App\Services\ExcelService;
-use App\services\SLHDService;
+use App\Services\SLHDService;
 use Illuminate\Support\Facades\Log;
 use App\Models\Submission;
 use App\Models\Dinas;
