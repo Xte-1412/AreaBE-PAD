@@ -18,7 +18,7 @@ class DatabaseSeeder extends Seeder
             DinasSeeder::class,
             UpdateHasPesisirSeeder::class,
             // TestingDataSeeder::class
-            // SimpleTestingDataSeeder::class,
+            SimpleTestingDataSeeder::class,
         ]);   
         // User::factory(10)->create();
 
