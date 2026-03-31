@@ -1,0 +1,29 @@
+[33m32e2d21[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m feat: add ping route for API health check and update CORS options route
+[33m718ecf7[m feat: add CORS headers to options route for improved API accessibility
+[33me2ae978[m feat: add CORS support in .htaccess for improved API accessibility
+[33mf853e09[m chore: remove package.json and vite.config.js files
+[33m5c11792[m Refactor code structure for improved readability and maintainability
+[33ma006c28[m chore: remove dockerfile to use railway native nixpacks builder
+[33m22f2b33[m Merge branch 'main' of github.com-xte:Xte-1412/AreaBE-PAD
+[33m30a70a2[m fix: update Dockerfile comments and environment variables for clarity
+[33mf087817[m Pesan Commit: fix: update cors policy and env configuration for vercel deployment
+[33m101f984[m fix: force port 80 and webroot in dockerfile
+[33m3e5dba3[m fix: temporary route for migration
+[33mb61f717[m fix: ignore php platform requirements for build
+[33m5403823[m fix: REAL rename Dockerfile case sensitivity
+[33m64dc830[m fix: rename DockerFile to Dockerfile
+[33m2f4cd99[m chore: add Dockerfile and .dockerignore
+[33m16fba41[m 1st: Setup
+[33md987bd5[m data dumy simple production
+[33mde305f2[m debug prod
+[33mbd7db12[m Add templates folder with all files
+[33m8b0ac58[m need template
+[33mca0964e[m Add templates folder to version control
+[33m93368e0[m templtate
+[33m028dc8d[m typo
+[33m6e4253b[m tes26
+[33m9a6d127[m version 0.1
+[33m5aa7cbe[m hedeh
+[33m3d425c9[m BISMILLAH G CRASH
+[33m89075dc[m first time ges
+[33mb6e4552[m aowwowow
