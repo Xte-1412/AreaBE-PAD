@@ -8,6 +8,17 @@ use App\Http\Controllers\Dinas\UploadController;
 use App\Http\Controllers\Pusdatin\PenilaianSLHD_Controller;
 use App\http\Controllers\Pusdatin\PenilaianPenghargaan_Controller;
 
+// Testing route - Panggil ini dari browser atau Vercel buat cek status
+Route::get('/health-check', function () {
+    return response()->json([
+        'status' => 'online',
+        'message' => 'Backend Railway is Running!',
+        'timestamp' => now()->toDateTimeString(),
+        'php_version' => PHP_VERSION,
+        'database_connection' => \DB::connection()->getDatabaseName() ? 'Connected' : 'Error'
+    ]);
+});
+
 Route::post('/login', [App\Http\Controllers\Auth\AuthController::class, 'login']);
 Route::post('/register', [App\Http\Controllers\Auth\AuthController::class, 'register']);
 Route::post('/logout', [App\Http\Controllers\Auth\AuthController::class, 'logout'])->middleware('auth:sanctum');
