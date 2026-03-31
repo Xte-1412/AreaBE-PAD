@@ -6,7 +6,7 @@ use App\Models\User;
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Dinas\UploadController;
 use App\Http\Controllers\Pusdatin\PenilaianSLHD_Controller;
-use App\http\Controllers\Pusdatin\PenilaianPenghargaan_Controller;
+use App\Http\Controllers\Pusdatin\PenilaianPenghargaan_Controller;
 
 // Testing route - Panggil ini dari browser atau Vercel buat cek status
 Route::get('/health-check', function () {
