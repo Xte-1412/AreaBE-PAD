@@ -23,6 +23,7 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 /PAD
+ngrok.exe
 
 # Allow templates folder to be pushed to Git
 !/storage/app/templates
