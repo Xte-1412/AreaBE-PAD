@@ -11,6 +11,8 @@ return [
         'https://zona-fe-pad.vercel.app',
         'https://area-fe-pad.vercel.app',
         'https://talcum-fragile-panic.ngrok-free.dev',
+        'http://10.33.35.48:3000',
+        'http://202.43.94.30:3000',
     ],
 
     'allowed_origins_patterns' => [],
