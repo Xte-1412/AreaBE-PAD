@@ -50,11 +50,15 @@ class DashboardController extends Controller
             ->get()
             ->pluck('count', 'status');
         
-        // Storage usage (dalam MB)
+        // Storage usage (dalam MB) - Bypass pada lokal dev untuk menghindari timeout WSL2 (traversal 8300+ file)
         $storageUsed = 0;
-        $storagePath = storage_path('app/dlh');
-        if (file_exists($storagePath)) {
-            $storageUsed = $this->getDirSize($storagePath) / (1024 * 1024); // Convert to MB
+        if (config('app.env') !== 'local') {
+            $storagePath = storage_path('app/dlh');
+            if (file_exists($storagePath)) {
+                $storageUsed = $this->getDirSize($storagePath) / (1024 * 1024); // Convert to MB
+            }
+        } else {
+            $storageUsed = 45.8; // Nilai mock cepat untuk lokal dev
         }
         
         // Get timeline penilaian (tahapan + deadline + statistik lolos)
